@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Panel principal — MauleClima</h2>
+<p>Bienvenido, <strong>{{ user.username }}</strong>.</p>
+<div class="row mt-4">
+<div class="col-md-4"><div class="card text-center p-3 shadow-sm"><h5>Zonas</h5><p class="text-muted">Gestión de comunas</p><a href="#" class="btn btn-dark btn-sm">Ver zonas</a></div></div>
+<div class="col-md-4"><div class="card text-center p-3 shadow-sm"><h5>Mediciones</h5><p class="text-muted">Datos climáticos</p><a href="#" class="btn btn-dark btn-sm">Ver mediciones</a></div></div>
+<div class="col-md-4"><div class="card text-center p-3 shadow-sm"><h5>Grafos</h5><p class="text-muted">Relaciones espaciales</p><a href="#" class="btn btn-dark btn-sm">Explorar</a></div></div>
+</div>
+{% endblock %}
