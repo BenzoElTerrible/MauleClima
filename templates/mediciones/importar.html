@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Importar datos{% endblock %}
+{% block page_title %}Importar datos climáticos{% endblock %}
+{% block nav_mediciones %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2 class="page-header-title">
+      <i data-lucide="upload" style="width:22px;height:22px;vertical-align:middle;"></i>
+      Importar CSV
+    </h2>
+    <p class="page-header-sub">Sube un archivo exportado desde Google Earth Engine (ERA5 o MODIS)</p>
+  </div>
+</div>
+
+{% if messages %}
+{% for message in messages %}
+<div class="alert alert-{{ message.tags }}" style="margin-bottom:16px;">
+  {{ message }}
+  <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- Formulario -->
+<div class="card" style="margin-bottom:24px;">
+  <div class="card-title" style="margin-bottom:6px;">Seleccionar archivo</div>
+  <p style="font-size:13px;color:var(--gray-500);margin-bottom:20px;">
+    El sistema detecta automáticamente si es ERA5 o MODIS según las columnas del archivo.
+  </p>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="form-group">
+      <label class="form-label">Archivo CSV</label>
+      <input type="file" name="archivo" accept=".csv" class="form-control" required />
+    </div>
+
+    <div class="card" style="background:var(--green-50);border:1px solid var(--green-200);margin-bottom:20px;">
+      <div style="font-size:13px;color:var(--gray-600);">
+        <strong style="color:var(--green-700);">ERA5</strong> — debe tener las columnas:
+        <code>nombre, fecha, temperatura_c, temperatura_min_c, temperatura_max_c, total_precipitation_sum</code>
+      </div>
+      <div style="font-size:13px;color:var(--gray-600);margin-top:8px;">
+        <strong style="color:var(--green-700);">MODIS</strong> — debe tener las columnas:
+        <code>nombre, fecha, NDVI, EVI</code>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+      <i data-lucide="upload" style="width:16px;height:16px;"></i> Importar archivo
+    </button>
+  </form>
+</div>
+
+<!-- Historial -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Últimas importaciones</div>
+  </div>
+
+  {% if scripts %}
+  <div class="table-wrapper" style="border:none;box-shadow:none;">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Archivo</th>
+          <th>Fuente</th>
+          <th>Importados</th>
+          <th>Rechazados</th>
+          <th>Subido por</th>
+          <th>Fecha</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in scripts %}
+        <tr>
+          <td><strong>{{ s.archivo_csv }}</strong></td>
+          <td>
+            <span class="badge {% if s.fuente == 'ERA5' %}badge-blue{% else %}badge-green{% endif %}">
+              {{ s.fuente }}
+            </span>
+          </td>
+          <td>{{ s.registros_importados }}</td>
+          <td>
+            {% if s.registros_rechazados > 0 %}
+            <span style="color:var(--danger);">{{ s.registros_rechazados }}</span>
+            {% else %}0{% endif %}
+          </td>
+          <td>{{ s.subido_por.username }}</td>
+          <td>{{ s.subido_en|date:"d/m/Y H:i" }}</td>
+          <td><span class="badge badge-green">{{ s.estado }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon"> empty</div>
+    <!-- empty state sin emoji -->
+    <div class="empty-state">
+      <i data-lucide="inbox" style="width:48px;height:48px;color:var(--gray-300);"></i>
+      <div class="empty-state-text">No hay importaciones registradas aún.</div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

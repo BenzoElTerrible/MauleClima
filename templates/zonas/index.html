@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}Mapa{% endblock %}
+{% block page_title %}Mapa de Comunas{% endblock %}
+{% block nav_zonas %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .leaflet-tooltip-comuna {
+    background: rgba(20,56,31,.92);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 4px 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+  .leaflet-tooltip-comuna::before { display: none; }
+  .leaflet-container:focus,
+  .leaflet-interactive:focus { outline: none !important; box-shadow: none !important; }
+  #panel-comuna { display: none; }
+  .serie-bar-wrap { display:flex; align-items:flex-end; gap:2px; height:60px; margin-top:8px; }
+  .serie-bar { background: var(--green-400); border-radius:2px 2px 0 0; min-width:6px; flex:1; transition: height .2s; }
+  .serie-bar:hover { background: var(--green-300); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2 class="page-header-title">Región del Maule</h2>
+    <p class="page-header-sub">Datos climáticos por comuna</p>
+  </div>
+</div>
+
+<!-- Controles -->
+<div class="card" style="margin-bottom:16px;padding:16px 20px;">
+  <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
+
+    <div>
+      <label class="form-label">Variable</label>
+      <select id="sel-variable" class="form-control" style="min-width:220px;">
+        {% for key, info in variables.items %}
+        <option value="{{ key }}">{{ info.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="form-label">Fecha</label>
+      <input type="date" id="sel-fecha" class="form-control"
+             value="{{ ultima_fecha }}" />
+    </div>
+
+    <div>
+      <label class="form-label">Filtrar provincia</label>
+      <select id="sel-provincia" class="form-control" style="min-width:160px;">
+        <option value="">Todas</option>
+      </select>
+    </div>
+
+    <button onclick="cargarMapa()" class="btn btn-primary">
+      <i data-lucide="refresh-cw" style="width:15px;height:15px;"></i>
+      Actualizar
+    </button>
+
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;">
+
+  <!-- Mapa -->
+  <div>
+    <div class="card" style="padding:0;overflow:hidden;position:relative;">
+      <div id="map" style="height:560px;"></div>
+      <!-- Spinner sobre el mapa -->
+      <div id="map-loading" style="display:none;position:absolute;inset:0;
+           background:rgba(255,255,255,.6);z-index:1000;
+           display:none;align-items:center;justify-content:center;">
+        <svg style="width:36px;height:36px;animation:spin .8s linear infinite;"
+             viewBox="0 0 24 24" fill="none" stroke="#2d7a44" stroke-width="2">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Leyenda dinámica -->
+    <div class="card" style="margin-top:12px;padding:14px 18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:12px;color:var(--gray-500);" id="leyenda-min">mín</span>
+        <div style="flex:1;height:12px;margin:0 10px;border-radius:6px;
+             background:linear-gradient(to right,#2166ac,#74add1,#fee090,#f46d43,#d73027);"></div>
+        <span style="font-size:12px;color:var(--gray-500);" id="leyenda-max">máx</span>
+      </div>
+      <div style="text-align:center;font-size:12px;color:var(--gray-400);margin-top:4px;"
+           id="leyenda-label">Temperatura promedio (°C)</div>
+    </div>
+  </div>
+
+  <!-- Panel lateral -->
+  <div>
+    <!-- Vacío -->
+    <div class="card" id="panel-vacio">
+      <div class="empty-state" style="padding:30px 10px;">
+        <i data-lucide="mouse-pointer-click"
+           style="width:40px;height:40px;color:var(--gray-300);margin-bottom:10px;"></i>
+        <div class="empty-state-text">Haz clic en una comuna</div>
+      </div>
+    </div>
+
+    <!-- Datos de comuna -->
+    <div class="card" id="panel-comuna">
+      <div style="font-size:16px;font-weight:700;color:var(--gray-900);
+                  margin-bottom:14px;" id="comuna-nombre"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div style="background:var(--green-50);border-radius:8px;padding:12px;">
+          <div style="font-size:11px;color:var(--gray-400);">Valor</div>
+          <div style="font-size:22px;font-weight:700;color:var(--green-700);"
+               id="comuna-valor">—</div>
+        </div>
+        <div style="background:var(--gray-50);border-radius:8px;padding:12px;">
+          <div style="font-size:11px;color:var(--gray-400);">Fecha</div>
+          <div style="font-size:14px;font-weight:600;" id="comuna-fecha">—</div>
+        </div>
+      </div>
+
+      <!-- Mini gráfico serie temporal -->
+      <div style="margin-bottom:14px;">
+        <div style="font-size:12px;color:var(--gray-400);margin-bottom:4px;">
+          Serie temporal (últimos registros)
+        </div>
+        <div class="serie-bar-wrap" id="serie-bars">
+          <div style="color:var(--gray-300);font-size:12px;">Cargando...</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;
+                    font-size:10px;color:var(--gray-400);margin-top:2px;">
+          <span id="serie-fecha-ini">—</span>
+          <span id="serie-fecha-fin">—</span>
+        </div>
+      </div>
+
+      <!-- Botones -->
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <a id="btn-exportar" href="#" class="btn btn-outline btn-sm">
+          <i data-lucide="download" style="width:14px;height:14px;"></i>
+          Exportar CSV de esta comuna
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js para la serie temporal -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+const map = L.map('map', {zoomControl:true}).setView([-35.5, -71.5], 8);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+
+let geojsonLayer = null;
+let todosLosFeatures = [];
+let minVal = 0, maxVal = 1;
+
+// Escala de colores
+function getColor(val, min, max) {
+  if (val === null || val === undefined) return '#e5e7eb';
+  const t = Math.max(0, Math.min(1, (val - min) / (max - min || 1)));
+  const colores = [
+    [33,102,172], [116,173,209], [254,224,144], [244,109,67], [215,48,39]
+  ];
+  const idx = t * (colores.length - 1);
+  const i = Math.floor(idx);
+  const f = idx - i;
+  const c1 = colores[Math.min(i, colores.length-1)];
+  const c2 = colores[Math.min(i+1, colores.length-1)];
+  const r = Math.round(c1[0] + f*(c2[0]-c1[0]));
+  const g = Math.round(c1[1] + f*(c2[1]-c1[1]));
+  const b = Math.round(c1[2] + f*(c2[2]-c1[2]));
+  return `rgb(${r},${g},${b})`;
+}
+
+function mostrarSpinner(v) {
+  document.getElementById('map-loading').style.display = v ? 'flex' : 'none';
+}
+
+function cargarMapa() {
+  const variable = document.getElementById('sel-variable').value;
+  const fecha    = document.getElementById('sel-fecha').value;
+  const label    = document.getElementById('sel-variable').selectedOptions[0].text;
+
+  mostrarSpinner(true);
+
+  fetch(`/api/geojson/?variable=${variable}&fecha=${fecha}`)
+    .then(r => r.json())
+    .then(data => {
+      todosLosFeatures = data.features;
+
+      // Calcular min/max para escala de color
+      const vals = data.features
+        .map(f => f.properties.valor)
+        .filter(v => v !== null && v !== undefined);
+      minVal = vals.length ? Math.min(...vals) : 0;
+      maxVal = vals.length ? Math.max(...vals) : 1;
+
+      // Actualizar leyenda
+      document.getElementById('leyenda-min').textContent = minVal.toFixed(2);
+      document.getElementById('leyenda-max').textContent = maxVal.toFixed(2);
+      document.getElementById('leyenda-label').textContent = label;
+
+      // Poblar selector de provincias
+      const provSet = new Set(data.features.map(f => f.properties.provincia).filter(Boolean));
+      const selProv = document.getElementById('sel-provincia');
+      selProv.innerHTML = '<option value="">Todas</option>';
+      provSet.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p; opt.textContent = p;
+        selProv.appendChild(opt);
+      });
+
+      // Dibujar GeoJSON
+      if (geojsonLayer) map.removeLayer(geojsonLayer);
+      geojsonLayer = L.geoJSON(data, {
+        style: f => ({
+          fillColor:   getColor(f.properties.valor, minVal, maxVal),
+          weight:      1,
+          color:       '#ffffff',
+          fillOpacity: 0.78,
+        }),
+        onEachFeature: (feature, layer) => {
+          const p = feature.properties;
+          const val = p.valor !== null && p.valor !== undefined
+            ? p.valor.toFixed(3) : 'Sin datos';
+
+          layer.bindTooltip(`<strong>${p.nombre}</strong><br>${label}: ${val}`, {
+            sticky: true, className: 'leaflet-tooltip-comuna'
+          });
+
+          layer.on('mouseover', function() {
+            layer.setStyle({ weight: 2.5, color: '#ffffff', fillOpacity: 0.95 });
+            layer.bringToFront();
+          });
+          layer.on('mouseout', () => geojsonLayer.resetStyle(layer));
+          layer.on('click',    () => mostrarPanel(p, feature));
+        }
+      }).addTo(map);
+
+      mostrarSpinner(false);
+    })
+    .catch(() => mostrarSpinner(false));
+}
+
+function mostrarPanel(p, feature) {
+  // Flash
+  // Mostrar panel
+  document.getElementById('panel-vacio').style.display  = 'none';
+  document.getElementById('panel-comuna').style.display = 'block';
+  document.getElementById('comuna-nombre').textContent  =
+    '📍 ' + p.nombre + (p.provincia ? ` · ${p.provincia}` : '');
+
+  const val = p.valor !== null && p.valor !== undefined
+    ? p.valor.toFixed(3) : '—';
+  document.getElementById('comuna-valor').textContent = val;
+  document.getElementById('comuna-fecha').textContent  = p.fecha || '—';
+
+  // Botón exportar
+  document.getElementById('btn-exportar').href =
+    `/api/exportar/${p.zona_id}/`;
+
+  // Serie temporal
+  cargarSerie(p.zona_id, document.getElementById('sel-variable').value);
+}
+
+function cargarSerie(zonaId, variable) {
+  document.getElementById('serie-bars').innerHTML =
+    '<div style="color:var(--gray-300);font-size:12px;">Cargando...</div>';
+
+  fetch(`/api/serie/${zonaId}/?variable=${variable}`)
+    .then(r => r.json())
+    .then(data => {
+      const datos = data.datos;
+      if (!datos.length) {
+        document.getElementById('serie-bars').innerHTML =
+          '<div style="color:var(--gray-300);font-size:12px;">Sin datos</div>';
+        return;
+      }
+
+      const vals = datos.map(d => d.valor);
+      const mn   = Math.min(...vals);
+      const mx   = Math.max(...vals);
+
+      const bars = datos.map(d => {
+        const h = mx === mn ? 50 : Math.max(8, ((d.valor - mn) / (mx - mn)) * 56);
+        return `<div class="serie-bar" style="height:${h}px;"
+                     title="${d.fecha}: ${d.valor.toFixed(3)}"></div>`;
+      }).join('');
+
+      document.getElementById('serie-bars').innerHTML = bars;
+      document.getElementById('serie-fecha-ini').textContent = datos[0].fecha;
+      document.getElementById('serie-fecha-fin').textContent = datos[datos.length-1].fecha;
+    });
+}
+
+// Filtro por provincia (en cliente)
+document.getElementById('sel-provincia').addEventListener('change', function() {
+  if (!geojsonLayer) return;
+  const prov = this.value;
+  geojsonLayer.eachLayer(layer => {
+    const p = layer.feature.properties;
+    if (!prov || p.provincia === prov) {
+      layer.setStyle({ fillOpacity: 0.78, weight: 1 });
+    } else {
+      layer.setStyle({ fillOpacity: 0.15, weight: 0.5 });
+    }
+  });
+});
+
+// Cargar al inicio
+cargarMapa();
+</script>
+{% endblock %}

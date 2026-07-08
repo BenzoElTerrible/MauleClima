@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Resultado importación{% endblock %}
+{% block page_title %}Resultado de importación{% endblock %}
+{% block nav_mediciones %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2 class="page-header-title">
+      <i data-lucide="{% if resultado.importados > 0 %}check-circle{% else %}alert-triangle{% endif %}"
+        style="width:22px;height:22px;vertical-align:middle;"></i>
+      Importación completada
+    </h2>
+  </div>
+</div>
+
+<div class="stats-grid" style="margin-bottom:24px;">
+  <div class="stat-card">
+    <div class="stat-icon">
+      <i data-lucide="database" style="width:22px;height:22px;"></i>
+    </div>
+    <div>
+      <div class="stat-value">{{ resultado.fuente }}</div>
+      <div class="stat-label">Fuente detectada</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon">
+      <i data-lucide="check" style="width:22px;height:22px;"></i>
+    </div>
+    <div>
+      <div class="stat-value">{{ resultado.importados }}</div>
+      <div class="stat-label">Registros importados</div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon">
+      <i data-lucide="x" style="width:22px;height:22px;"></i>
+    </div>
+    <div>
+      <div class="stat-value">{{ resultado.rechazados }}</div>
+      <div class="stat-label">Registros rechazados</div>
+    </div>
+  </div>
+</div>
+
+{% if resultado.errores %}
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-title" style="color:var(--danger);margin-bottom:12px;">
+    Errores encontrados
+  </div>
+  {% for error in resultado.errores %}
+  <div style="font-size:13px;color:var(--danger);padding:4px 0;border-bottom:1px solid var(--gray-100);">
+    {{ error }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card" style="font-size:13px;color:var(--gray-500);">
+  ID de auditoría (ScriptGEE): <code>{{ resultado.script_id }}</code>
+</div>
+
+<div style="margin-top:20px;display:flex;gap:12px;">
+  <a href="{% url 'mediciones:importar' %}" class="btn btn-primary">
+    <i data-lucide="upload" style="width:16px;height:16px;"></i> Importar otro archivo
+  </a>
+  <a href="{% url 'mediciones:index' %}" class="btn btn-outline">
+    <i data-lucide="bar-chart-2" style="width:16px;height:16px;"></i> Ver mediciones
+  </a>
+</div>
+{% endblock %}

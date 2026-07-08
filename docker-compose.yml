@@ -1,0 +1,25 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: mongo-maule
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: mauleclima
+    volumes:
+      - mongo-data:/data/db
+
+  neo4j:
+    image: neo4j:5.23
+    container_name: neo4j-maule
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/mauleclima2024
+    volumes:
+      - neo4j-data:/data
+
+volumes:
+  mongo-data:
+  neo4j-data:

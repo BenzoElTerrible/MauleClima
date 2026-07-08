@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Crear cuenta{% endblock %}
+{% block body_class %}{% endblock %}
+
+{% block full_page %}
+<div class="auth-wrapper">
+    <div class="auth-content">
+        <div class="auth-card">
+
+        <div class="auth-logo">
+            <div class="auth-logo-icon"></div>
+            <div class="auth-logo-text">MauleClima</div>
+            <div class="auth-logo-sub">Plataforma climática de la Región del Maule</div>
+        </div>
+
+        <h2 class="auth-title">Crear cuenta</h2>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">Usuario</label>
+                <input type="text" name="username" class="form-control" placeholder="Tu usuario" autofocus />
+                {% if form.username.errors %}
+                <p class="form-error">{{ form.username.errors|join:", " }}</p>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label class="form-label">Correo electrónico</label>
+                <input type="email" name="email" class="form-control" placeholder="correo@utal.cl" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Contraseña</label>
+                <input type="password" name="password1" class="form-control" placeholder="Mínimo 8 caracteres" />
+                {% if form.password1.errors %}
+                <p class="form-error">{{ form.password1.errors|join:", " }}</p>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label class="form-label">Confirmar contraseña</label>
+                <input type="password" name="password2" class="form-control" placeholder="Repite la contraseña" />
+                {% if form.password2.errors %}
+                <p class="form-error">{{ form.password2.errors|join:", " }}</p>
+                {% endif %}
+            </div>
+            <button type="submit" class="btn btn-primary btn-full btn-lg">
+            Crear cuenta →
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            ¿Ya tienes cuenta? <a href="{% url 'accounts:login' %}">Inicia sesión</a>
+        </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

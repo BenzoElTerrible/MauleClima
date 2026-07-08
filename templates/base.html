@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}MauleClima{% endblock %} · MauleClima</title>
+
+    <!-- Leaflet CSS (disponible cuando lo necesitemos) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/main.css' %}" />
+
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body class="{% block body_class %}app-layout{% endblock %}">
+
+{% block full_page %}
+
+<!-- SIDEBAR  (solo visible cuando el usuario está autenticado) -->
+{% if user.is_authenticated %}
+<aside class="sidebar" id="sidebar">
+
+    <!-- Logo / marca -->
+    <div class="sidebar-brand">
+      <span class="sidebar-brand-icon"></span>
+      <span class="sidebar-brand-text">MauleClima</span>
+    </div>
+
+    <!-- Navegación principal -->
+    <nav class="sidebar-nav">
+      <p class="sidebar-section-label">Exploración</p>
+
+      <a href="{% url 'zonas:index' %}" class="sidebar-link {% block nav_zonas %}{% endblock %}">
+        <i data-lucide="map" class="sidebar-icon"></i> Mapa de Comunas
+      </a>
+
+      <a href="{% url 'grafos:index' %}" class="sidebar-link {% block nav_grafos %}{% endblock %}">
+        <i data-lucide="share-2" class="sidebar-icon"></i> Explorador de Grafos
+      </a>
+
+      <a href="{% url 'mediciones:index' %}" class="sidebar-link {% block nav_mediciones %}{% endblock %}">
+        <i data-lucide="bar-chart-2" class="sidebar-icon"></i> Mediciones
+      </a>
+
+      <p class="sidebar-section-label">Consultas</p>
+
+      <a href="#" class="sidebar-link">
+        <i data-lucide="search" class="sidebar-icon"></i> Consultas Predefinidas
+      </a>
+
+      {% if user.is_staff %}
+      <p class="sidebar-section-label">Administración</p>
+      <a href="{% url 'mediciones:importar' %}" class="sidebar-link {% block nav_importar %}{% endblock %}">
+          <i data-lucide="upload" class="sidebar-icon"></i> Importar CSV
+      </a>
+      {% endif %}
+    </nav>
+
+    <!-- Info del usuario en el fondo del sidebar -->
+    <div class="sidebar-user">
+        <div class="sidebar-user-avatar">
+            {{ user.username|first|upper }}
+        </div>
+        <div class="sidebar-user-info">
+            <p class="sidebar-user-name">{{ user.get_full_name|default:user.username }}</p>
+            <p class="sidebar-user-role">
+              {% if user.is_superuser %}Admin
+              {% elif user.is_staff %}Editor
+              {% else %}Viewer{% endif %}
+            </p>
+        </div>
+        <a href="{% url 'accounts:logout' %}" class="sidebar-logout" title="Cerrar sesión">
+          <i data-lucide="log-out" style="width:16px;height:16px;"></i>
+        </a>
+    </div>
+
+</aside>
+{% endif %}
+
+<!-- CONTENIDO PRINCIPAL -->
+<div class="{% if user.is_authenticated %}main-wrapper{% else %}auth-wrapper{% endif %}">
+
+  {% if user.is_authenticated %}
+  <!-- Topbar -->
+  <header class="topbar">
+    <button class="topbar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+      <span></span><span></span><span></span>
+    </button>
+    <h1 class="topbar-title">{% block page_title %}Dashboard{% endblock %}</h1>
+    <div class="topbar-right">
+      <span class="topbar-badge">{{ user.username }}</span>
+    </div>
+  </header>
+  {% endif %}
+
+  <!-- Mensajes de Django -->
+  {% if messages %}
+  <div class="messages-container">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">
+      {{ message }}
+      <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Contenido de cada página -->
+  <main class="{% if user.is_authenticated %}page-content{% else %}auth-content{% endif %}">
+    {% block content %}{% endblock %}
+  </main>
+
+</div>
+
+{% endblock full_page %}
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+
+
+<!-- Respondivo para celular el navbar-->
+<script>
+  // Toggle sidebar en móvil
+  const sidebarToggle = document.getElementById('sidebarToggle');
+  const sidebar = document.getElementById('sidebar');
+  if (sidebarToggle && sidebar) {
+    sidebarToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('sidebar-open');
+    });
+  }
+</script>
+
+{% block extra_js %}{% endblock %}
+<!-- Lucide -->
+<script>lucide.createIcons();</script>
+
+</body>
+</html>
