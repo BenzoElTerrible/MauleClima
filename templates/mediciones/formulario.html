@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block nav_mediciones %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2 class="page-header-title">{{ titulo }}</h2>
+</div>
+
+<div class="card" style="max-width:640px;">
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="form-group">
+      <label class="form-label">Comuna</label>
+      {{ form.zona }}
+    </div>
+
+    <div style="display:flex;gap:16px;">
+      <div class="form-group" style="flex:1;">
+        <label class="form-label">Fecha</label>
+        {{ form.fecha }}
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label class="form-label">Fuente</label>
+        {{ form.fuente }}
+      </div>
+    </div>
+
+    <div id="campos-era5">
+      <div class="card-title" style="margin:20px 0 10px;font-size:14px;">Datos ERA5</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        <div class="form-group"><label class="form-label">Temp. promedio (°C)</label>{{ form.temperatura_c }}</div>
+        <div class="form-group"><label class="form-label">Temp. mínima (°C)</label>{{ form.temperatura_min_c }}</div>
+        <div class="form-group"><label class="form-label">Temp. máxima (°C)</label>{{ form.temperatura_max_c }}</div>
+        <div class="form-group"><label class="form-label">Precipitación (mm)</label>{{ form.precipitacion_mm }}</div>
+        <div class="form-group"><label class="form-label">Punto de rocío (°C)</label>{{ form.dewpoint_c }}</div>
+        <div class="form-group"><label class="form-label">Viento U</label>{{ form.viento_u }}</div>
+        <div class="form-group"><label class="form-label">Viento V</label>{{ form.viento_v }}</div>
+        <div class="form-group"><label class="form-label">Humedad del suelo</label>{{ form.humedad_suelo }}</div>
+        <div class="form-group"><label class="form-label">Cobertura de nieve</label>{{ form.cobertura_nieve }}</div>
+        <div class="form-group"><label class="form-label">Radiación solar</label>{{ form.radiacion_solar }}</div>
+      </div>
+    </div>
+
+    <div id="campos-modis">
+      <div class="card-title" style="margin:20px 0 10px;font-size:14px;">Datos MODIS</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        <div class="form-group"><label class="form-label">NDVI</label>{{ form.ndvi }}</div>
+        <div class="form-group"><label class="form-label">EVI</label>{{ form.evi }}</div>
+        <div class="form-group"><label class="form-label">Calidad MODIS</label>{{ form.quality_modis }}</div>
+      </div>
+    </div>
+
+    <div class="card-title" style="margin:20px 0 10px;font-size:14px;">Control</div>
+    <div class="form-group">
+      <label class="form-label">Datos extra (JSON opcional)</label>
+      {{ form.extra }}
+    </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+      {{ form.validado }}
+      <label class="form-label" style="margin:0;">Validado</label>
+    </div>
+
+    {% if form.errors %}
+    <div class="alert alert-error" style="margin:16px 0;">
+      Revisa los campos marcados: {{ form.errors }}
+    </div>
+    {% endif %}
+
+    <div style="display:flex;gap:12px;margin-top:20px;">
+      <button type="submit" class="btn btn-primary">
+        <i data-lucide="check" style="width:16px;height:16px;"></i> Guardar
+      </button>
+      <a href="{% url 'mediciones:index' %}" class="btn btn-outline">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function actualizarCamposPorFuente() {
+  const fuente = document.getElementById('id_fuente').value;
+  document.getElementById('campos-era5').style.display  = fuente === 'MODIS' ? 'none' : 'block';
+  document.getElementById('campos-modis').style.display = fuente === 'ERA5'  ? 'none' : 'block';
+}
+document.getElementById('id_fuente').addEventListener('change', actualizarCamposPorFuente);
+actualizarCamposPorFuente();
+</script>
+{% endblock %}

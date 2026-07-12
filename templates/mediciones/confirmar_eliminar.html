@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Eliminar medición{% endblock %}
+{% block page_title %}Eliminar medición{% endblock %}
+{% block nav_mediciones %}active{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:480px;">
+  <div class="card-title" style="margin-bottom:12px;">
+    <i data-lucide="alert-triangle" style="width:18px;height:18px;vertical-align:middle;color:var(--danger);"></i>
+    ¿Eliminar esta medición?
+  </div>
+  <p style="font-size:14px;color:var(--gray-500);margin-bottom:20px;">
+    {{ medicion.zona_nombre }} · {{ medicion.fecha }} · {{ medicion.fuente }}<br>
+    Esta acción no se puede deshacer.
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <div style="display:flex;gap:12px;">
+      <button type="submit" class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);">
+        <i data-lucide="trash-2" style="width:16px;height:16px;"></i> Sí, eliminar
+      </button>
+      <a href="{% url 'mediciones:index' %}" class="btn btn-outline">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

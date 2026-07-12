@@ -5,5 +5,157 @@
 {% block nav_mediciones %}active{% endblock %}
 
 {% block content %}
-<p>Sección de mediciones — próximamente</p>
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+  <div>
+    <h2 class="page-header-title">Mediciones</h2>
+    <p class="page-header-sub">Últimos registros climáticos</p>
+  </div>
+  <a href="{% url 'mediciones:crear' %}" class="btn btn-primary">
+    <i data-lucide="plus" style="width:16px;height:16px;"></i> Nueva medición
+  </a>
+</div>
+
+{% if messages %}
+{% for message in messages %}
+<div class="alert alert-{{ message.tags }}" style="margin-bottom:16px;">
+  {{ message }}
+  <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if resumen %}
+<details style="margin-bottom:20px;">
+  <summary style="cursor:pointer;font-size:13px;color:var(--gray-500);padding:4px 0;">
+    Ver resumen de mediciones por comuna ({{ resumen|length }})
+  </summary>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+    {% for fila in resumen %}
+    <div style="background:var(--gray-50);border-radius:6px;padding:6px 12px;font-size:13px;white-space:nowrap;">
+      <strong>{{ fila.zona }}</strong> · {{ fila.total }}
+    </div>
+    {% endfor %}
+  </div>
+</details>
+{% endif %}
+
+<!-- Filtros -->
+<div class="card" style="margin-bottom:16px;padding:16px 20px;">
+  <form method="get" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
+    <div>
+      <label class="form-label">Comuna</label>
+      <select name="zona" class="form-control" style="min-width:180px;">
+        <option value="">Todas</option>
+        {% for z in zonas %}
+        <option value="{{ z.id }}" {% if filtros.zona == z.id|stringformat:"s" %}selected{% endif %}>{{ z.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Fuente</label>
+      <select name="fuente" class="form-control">
+        <option value="">Todas</option>
+        <option value="ERA5"  {% if filtros.fuente == 'ERA5'  %}selected{% endif %}>ERA5</option>
+        <option value="MODIS" {% if filtros.fuente == 'MODIS' %}selected{% endif %}>MODIS</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Desde</label>
+      <input type="date" name="fecha_inicio" class="form-control" value="{{ filtros.fecha_inicio }}">
+    </div>
+    <div>
+      <label class="form-label">Hasta</label>
+      <input type="date" name="fecha_fin" class="form-control" value="{{ filtros.fecha_fin }}">
+    </div>
+    <div>
+      <label class="form-label">Validado</label>
+      <select name="validado" class="form-control">
+        <option value="">Todos</option>
+        <option value="si" {% if filtros.validado == 'si' %}selected{% endif %}>Sí</option>
+        <option value="no" {% if filtros.validado == 'no' %}selected{% endif %}>No</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label" style="visibility:hidden;">Acción</label>
+      <div style="display:flex;gap:8px;">
+        <button type="submit" class="btn btn-primary">
+          <i data-lucide="filter" style="width:15px;height:15px;"></i> Filtrar
+        </button>
+        <a href="{% url 'mediciones:index' %}" class="btn btn-outline">Limpiar</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Registros</div>
+  </div>
+
+  {% if pagina %}
+  <div class="table-wrapper" style="border:none;box-shadow:none;">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Comuna</th>
+          <th>Fecha</th>
+          <th>Fuente</th>
+          <th>Valor principal</th>
+          <th>Validado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in pagina %}
+        <tr>
+          <td><strong>{{ m.zona_nombre }}</strong></td>
+          <td>{{ m.fecha }}</td>
+          <td>
+            <span class="badge {% if m.fuente == 'ERA5' %}badge-blue{% else %}badge-green{% endif %}">
+              {{ m.fuente }}
+            </span>
+          </td>
+          <td>
+            {% if m.fuente == 'ERA5' %}{{ m.temperatura_c|default_if_none:"—" }} °C
+            {% else %}NDVI {{ m.ndvi|default_if_none:"—" }}{% endif %}
+          </td>
+          <td>
+            {% if m.validado %}<span class="badge badge-green">Sí</span>
+            {% else %}<span class="badge" style="background:var(--gray-100);">No</span>{% endif %}
+          </td>
+          <td style="text-align:right;white-space:nowrap;">
+            <a href="{% url 'mediciones:editar' m.id %}" class="btn btn-outline btn-sm">
+              <i data-lucide="edit" style="width:14px;height:14px;"></i>
+            </a>
+            <a href="{% url 'mediciones:eliminar' m.id %}" class="btn btn-outline btn-sm">
+              <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagina.has_other_pages %}
+  <div style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:16px;">
+    {% if pagina.has_previous %}
+    <a href="?pagina={{ pagina.previous_page_number }}&zona={{ filtros.zona }}&fuente={{ filtros.fuente }}&fecha_inicio={{ filtros.fecha_inicio }}&fecha_fin={{ filtros.fecha_fin }}&validado={{ filtros.validado }}"
+       class="btn btn-outline btn-sm">Anterior</a>
+    {% endif %}
+    <span style="font-size:13px;color:var(--gray-500);">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+    {% if pagina.has_next %}
+    <a href="?pagina={{ pagina.next_page_number }}&zona={{ filtros.zona }}&fuente={{ filtros.fuente }}&fecha_inicio={{ filtros.fecha_inicio }}&fecha_fin={{ filtros.fecha_fin }}&validado={{ filtros.validado }}"
+       class="btn btn-outline btn-sm">Siguiente</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <i data-lucide="inbox" style="width:48px;height:48px;color:var(--gray-300);"></i>
+    <div class="empty-state-text">No hay mediciones registradas aún.</div>
+  </div>
+  {% endif %}
+</div>
 {% endblock %}
