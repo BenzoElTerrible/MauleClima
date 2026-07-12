@@ -57,6 +57,9 @@
 
       {% if user.is_staff %}
       <p class="sidebar-section-label">Administración</p>
+      <a href="{% url 'zonas:listado' %}" class="sidebar-link {% block nav_comunas %}{% endblock %}">
+          <i data-lucide="list" class="sidebar-icon"></i> Gestionar Comunas
+      </a>
       <a href="{% url 'mediciones:importar' %}" class="sidebar-link {% block nav_importar %}{% endblock %}">
           <i data-lucide="upload" class="sidebar-icon"></i> Importar CSV
       </a>

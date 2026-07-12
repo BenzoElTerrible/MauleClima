@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block nav_comunas %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2 class="page-header-title">{{ titulo }}</h2>
+</div>
+
+<div class="card" style="max-width:520px;">
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="form-group">
+      <label class="form-label">Nombre</label>
+      {{ form.nombre }}
+    </div>
+
+    <div style="display:flex;gap:16px;">
+      <div class="form-group" style="flex:1;">
+        <label class="form-label">Provincia</label>
+        {{ form.provincia }}
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label class="form-label">Código INE</label>
+        {{ form.codigo_ine }}
+      </div>
+    </div>
+
+    <div style="display:flex;gap:16px;">
+      <div class="form-group" style="flex:1;">
+        <label class="form-label">Latitud</label>
+        {{ form.lat }}
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label class="form-label">Longitud</label>
+        {{ form.lon }}
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Cuenca</label>
+      {{ form.cuenca }}
+    </div>
+
+    {% if form.errors %}
+    <div class="alert alert-error" style="margin:16px 0;">
+      Revisa los campos marcados: {{ form.errors }}
+    </div>
+    {% endif %}
+
+    <div style="display:flex;gap:12px;margin-top:20px;">
+      <button type="submit" class="btn btn-primary">
+        <i data-lucide="check" style="width:16px;height:16px;"></i> Guardar
+      </button>
+      <a href="{% url 'zonas:listado' %}" class="btn btn-outline">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

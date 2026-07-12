@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Eliminar comuna{% endblock %}
+{% block page_title %}Eliminar comuna{% endblock %}
+{% block nav_comunas %}active{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:480px;">
+  <div class="card-title" style="margin-bottom:12px;">
+    <i data-lucide="alert-triangle" style="width:18px;height:18px;vertical-align:middle;color:var(--danger);"></i>
+    ¿Eliminar esta comuna?
+  </div>
+  <p style="font-size:14px;color:var(--gray-500);margin-bottom:12px;">
+    {{ zona.nombre }} · {{ zona.provincia.nombre }}<br>
+    Esta acción no se puede deshacer.
+  </p>
+
+  {% if n_mediciones > 0 %}
+  <div class="alert alert-error" style="margin-bottom:20px;">
+    Esta comuna tiene <strong>{{ n_mediciones }}</strong> mediciones asociadas.
+    Mientras existan, no se podrá eliminar.
+  </div>
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+    <div style="display:flex;gap:12px;">
+      <button type="submit" class="btn btn-primary"
+              style="background:var(--danger);border-color:var(--danger);"
+              {% if n_mediciones > 0 %}disabled{% endif %}>
+        <i data-lucide="trash-2" style="width:16px;height:16px;"></i> Sí, eliminar
+      </button>
+      <a href="{% url 'zonas:listado' %}" class="btn btn-outline">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Comunas{% endblock %}
+{% block page_title %}Comunas{% endblock %}
+{% block nav_comunas %}active{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+  <div>
+    <h2 class="page-header-title">Comunas</h2>
+    <p class="page-header-sub">Gestión de zonas de la Región del Maule</p>
+  </div>
+  <a href="{% url 'zonas:crear' %}" class="btn btn-primary">
+    <i data-lucide="plus" style="width:16px;height:16px;"></i> Nueva comuna
+  </a>
+</div>
+
+{% if messages %}
+{% for message in messages %}
+<div class="alert alert-{{ message.tags }}" style="margin-bottom:16px;">
+  {{ message }}
+  <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+</div>
+{% endfor %}
+{% endif %}
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">{{ filas|length }} comunas</div>
+  </div>
+
+  {% if filas %}
+  <div class="table-wrapper" style="border:none;box-shadow:none;">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Provincia</th>
+          <th>Código INE</th>
+          <th>Lat / Lon</th>
+          <th>Cuenca</th>
+          <th>Mediciones</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fila in filas %}
+        <tr>
+          <td><strong>{{ fila.zona.nombre }}</strong></td>
+          <td>{{ fila.zona.provincia.nombre }}</td>
+          <td>{{ fila.zona.codigo_ine|default:"—" }}</td>
+          <td style="font-size:12px;color:var(--gray-500);">{{ fila.zona.lat }}, {{ fila.zona.lon }}</td>
+          <td>{{ fila.zona.cuenca|default:"—" }}</td>
+          <td>
+            {% if fila.n_mediciones > 0 %}
+            <a href="{% url 'mediciones:index' %}?zona={{ fila.zona.id }}" class="badge badge-blue" style="text-decoration:none;">
+              {{ fila.n_mediciones }}
+            </a>
+            {% else %}
+            <span style="color:var(--gray-400);">0</span>
+            {% endif %}
+          </td>
+          <td style="text-align:right;white-space:nowrap;">
+            <a href="{% url 'zonas:editar' fila.zona.id %}" class="btn btn-outline btn-sm">
+              <i data-lucide="edit" style="width:14px;height:14px;"></i>
+            </a>
+            <a href="{% url 'zonas:eliminar' fila.zona.id %}" class="btn btn-outline btn-sm">
+              <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i data-lucide="inbox" style="width:48px;height:48px;color:var(--gray-300);"></i>
+    <div class="empty-state-text">No hay comunas registradas aún.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -49,8 +49,14 @@
     </div>
 
     <div>
-      <label class="form-label">Fecha</label>
-      <input type="date" id="sel-fecha" class="form-control"
+      <label class="form-label">Desde</label>
+      <input type="date" id="sel-fecha-inicio" class="form-control"
+             value="{{ ultima_fecha }}" />
+    </div>
+
+    <div>
+      <label class="form-label">Hasta</label>
+      <input type="date" id="sel-fecha-fin" class="form-control"
              value="{{ ultima_fecha }}" />
     </div>
 
@@ -90,8 +96,7 @@
     <div class="card" style="margin-top:12px;padding:14px 18px;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <span style="font-size:12px;color:var(--gray-500);" id="leyenda-min">mín</span>
-        <div style="flex:1;height:12px;margin:0 10px;border-radius:6px;
-             background:linear-gradient(to right,#2166ac,#74add1,#fee090,#f46d43,#d73027);"></div>
+        <div id="leyenda-gradiente" style="flex:1;height:12px;margin:0 10px;border-radius:6px;"></div>
         <span style="font-size:12px;color:var(--gray-500);" id="leyenda-max">máx</span>
       </div>
       <div style="text-align:center;font-size:12px;color:var(--gray-400);margin-top:4px;"
@@ -169,18 +174,30 @@ let geojsonLayer = null;
 let todosLosFeatures = [];
 let minVal = 0, maxVal = 1;
 
-// Escala de colores
-function getColor(val, min, max) {
+// Escalas de color: una para variables de clima, otra para vegetación
+const RAMPAS = {
+  clima:      [[33,102,172], [116,173,209], [254,224,144], [244,109,67], [215,48,39]],
+  vegetacion: [[140,81,10],  [216,179,101], [246,232,195], [155,206,120], [26,152,80]],
+};
+const VARIABLES_VEGETACION = ['ndvi', 'evi'];
+
+function rampaActual(variable) {
+  return VARIABLES_VEGETACION.includes(variable) ? RAMPAS.vegetacion : RAMPAS.clima;
+}
+
+function rampaCss(rampa) {
+  return `linear-gradient(to right, ${rampa.map(([r,g,b]) => `rgb(${r},${g},${b})`).join(',')})`;
+}
+
+function getColor(val, min, max, variable) {
   if (val === null || val === undefined) return '#e5e7eb';
+  const rampa = rampaActual(variable);
   const t = Math.max(0, Math.min(1, (val - min) / (max - min || 1)));
-  const colores = [
-    [33,102,172], [116,173,209], [254,224,144], [244,109,67], [215,48,39]
-  ];
-  const idx = t * (colores.length - 1);
+  const idx = t * (rampa.length - 1);
   const i = Math.floor(idx);
   const f = idx - i;
-  const c1 = colores[Math.min(i, colores.length-1)];
-  const c2 = colores[Math.min(i+1, colores.length-1)];
+  const c1 = rampa[Math.min(i, rampa.length-1)];
+  const c2 = rampa[Math.min(i+1, rampa.length-1)];
   const r = Math.round(c1[0] + f*(c2[0]-c1[0]));
   const g = Math.round(c1[1] + f*(c2[1]-c1[1]));
   const b = Math.round(c1[2] + f*(c2[2]-c1[2]));
@@ -192,13 +209,14 @@ function mostrarSpinner(v) {
 }
 
 function cargarMapa() {
-  const variable = document.getElementById('sel-variable').value;
-  const fecha    = document.getElementById('sel-fecha').value;
-  const label    = document.getElementById('sel-variable').selectedOptions[0].text;
+  const variable    = document.getElementById('sel-variable').value;
+  const fechaInicio = document.getElementById('sel-fecha-inicio').value;
+  const fechaFin    = document.getElementById('sel-fecha-fin').value;
+  const label       = document.getElementById('sel-variable').selectedOptions[0].text;
 
   mostrarSpinner(true);
 
-  fetch(`/api/geojson/?variable=${variable}&fecha=${fecha}`)
+  fetch(`/api/geojson/?variable=${variable}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`)
     .then(r => r.json())
     .then(data => {
       todosLosFeatures = data.features;
@@ -214,6 +232,7 @@ function cargarMapa() {
       document.getElementById('leyenda-min').textContent = minVal.toFixed(2);
       document.getElementById('leyenda-max').textContent = maxVal.toFixed(2);
       document.getElementById('leyenda-label').textContent = label;
+      document.getElementById('leyenda-gradiente').style.background = rampaCss(rampaActual(variable));
 
       // Poblar selector de provincias
       const provSet = new Set(data.features.map(f => f.properties.provincia).filter(Boolean));
@@ -229,7 +248,7 @@ function cargarMapa() {
       if (geojsonLayer) map.removeLayer(geojsonLayer);
       geojsonLayer = L.geoJSON(data, {
         style: f => ({
-          fillColor:   getColor(f.properties.valor, minVal, maxVal),
+          fillColor:   getColor(f.properties.valor, minVal, maxVal, variable),
           weight:      1,
           color:       '#ffffff',
           fillOpacity: 0.78,
@@ -258,7 +277,6 @@ function cargarMapa() {
 }
 
 function mostrarPanel(p, feature) {
-  // Flash
   // Mostrar panel
   document.getElementById('panel-vacio').style.display  = 'none';
   document.getElementById('panel-comuna').style.display = 'block';
