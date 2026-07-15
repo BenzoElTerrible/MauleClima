@@ -1,19 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    {% load static %}
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}MauleClima{% endblock %} · MauleClima</title>
 
-    <!-- Leaflet CSS (disponible cuando lo necesitemos) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="{% static 'vendor/leaflet.css' %}" />
 
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    {% load static %}
+    <script src="{% static 'vendor/lucide.min.js' %}"></script>
     <link rel="stylesheet" href="{% static 'css/main.css' %}" />
 
     {% block extra_css %}{% endblock %}
@@ -23,17 +21,14 @@
 
 {% block full_page %}
 
-<!-- SIDEBAR  (solo visible cuando el usuario está autenticado) -->
 {% if user.is_authenticated %}
 <aside class="sidebar" id="sidebar">
 
-    <!-- Logo / marca -->
     <div class="sidebar-brand">
       <span class="sidebar-brand-icon"></span>
       <span class="sidebar-brand-text">MauleClima</span>
     </div>
 
-    <!-- Navegación principal -->
     <nav class="sidebar-nav">
       <p class="sidebar-section-label">Exploración</p>
 
@@ -51,7 +46,7 @@
 
       <p class="sidebar-section-label">Consultas</p>
 
-      <a href="#" class="sidebar-link">
+      <a href="{% url 'grafos:consultas' %}" class="sidebar-link {% block nav_consultas %}{% endblock %}">
         <i data-lucide="search" class="sidebar-icon"></i> Consultas Predefinidas
       </a>
 
@@ -66,7 +61,6 @@
       {% endif %}
     </nav>
 
-    <!-- Info del usuario en el fondo del sidebar -->
     <div class="sidebar-user">
         <div class="sidebar-user-avatar">
             {{ user.username|first|upper }}
@@ -87,11 +81,9 @@
 </aside>
 {% endif %}
 
-<!-- CONTENIDO PRINCIPAL -->
 <div class="{% if user.is_authenticated %}main-wrapper{% else %}auth-wrapper{% endif %}">
 
   {% if user.is_authenticated %}
-  <!-- Topbar -->
   <header class="topbar">
     <button class="topbar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
       <span></span><span></span><span></span>
@@ -103,7 +95,6 @@
   </header>
   {% endif %}
 
-  <!-- Mensajes de Django -->
   {% if messages %}
   <div class="messages-container">
     {% for message in messages %}
@@ -115,7 +106,6 @@
   </div>
   {% endif %}
 
-  <!-- Contenido de cada página -->
   <main class="{% if user.is_authenticated %}page-content{% else %}auth-content{% endif %}">
     {% block content %}{% endblock %}
   </main>
@@ -124,14 +114,9 @@
 
 {% endblock full_page %}
 
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{% static 'vendor/leaflet.js' %}"></script>
 
-
-
-<!-- Respondivo para celular el navbar-->
 <script>
-  // Toggle sidebar en móvil
   const sidebarToggle = document.getElementById('sidebarToggle');
   const sidebar = document.getElementById('sidebar');
   if (sidebarToggle && sidebar) {
@@ -142,7 +127,6 @@
 </script>
 
 {% block extra_js %}{% endblock %}
-<!-- Lucide -->
 <script>lucide.createIcons();</script>
 
 </body>

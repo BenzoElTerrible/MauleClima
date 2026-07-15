@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Consultas Predefinidas{% endblock %}
+{% block page_title %}Consultas Predefinidas{% endblock %}
+{% block nav_consultas %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2 class="page-header-title">Consultas Predefinidas</h2>
+    <p class="page-header-sub">Combina la estructura de Neo4j con los datos reales en MongoDB</p>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px;padding:16px 20px;">
+  <div class="card-title" style="margin-bottom:4px;">Ej: "comunas vecinas a Talca con temperatura &gt; 30°C en enero 2023"</div>
+  <div style="font-size:12px;color:var(--gray-400);margin-bottom:14px;">
+    Primero se busca la estructura en Neo4j (qué comunas están relacionadas con la elegida), luego se filtra ese resultado con datos reales de MongoDB.
+  </div>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
+    <div>
+      <label class="form-label">Comuna base</label>
+      <select id="c-zona" class="form-control" style="min-width:150px;"></select>
+    </div>
+    <div>
+      <label class="form-label">Relación</label>
+      <select id="c-tipo" class="form-control" style="min-width:140px;">
+        <option value="vecina">Vecina</option>
+        <option value="clima">Clima similar</option>
+        <option value="vegetacion">Vegetación similar</option>
+        <option value="riesgo">Riesgo similar</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Variable</label>
+      <select id="c-variable" class="form-control" style="min-width:170px;">
+        <option value="temperatura_max_c">Temperatura máxima (°C)</option>
+        <option value="temperatura_c">Temperatura promedio (°C)</option>
+        <option value="precipitacion_mm">Precipitación (mm)</option>
+        <option value="ndvi">NDVI</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Condición</label>
+      <select id="c-operador" class="form-control" style="width:110px;">
+        <option value="gt">mayor a</option>
+        <option value="lt">menor a</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Valor</label>
+      <input type="number" id="c-umbral" class="form-control" style="width:90px;" value="30">
+    </div>
+    <div>
+      <label class="form-label">Desde</label>
+      <input type="date" id="c-fecha-inicio" class="form-control">
+    </div>
+    <div>
+      <label class="form-label">Hasta</label>
+      <input type="date" id="c-fecha-fin" class="form-control">
+    </div>
+    <button onclick="ejecutarConsulta()" class="btn btn-primary">
+      <i data-lucide="search" style="width:15px;height:15px;"></i> Consultar
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title" style="margin-bottom:12px;">Resultado</div>
+  <div id="resultado-consulta" style="font-size:13px;">Elige los parámetros y aprieta "Consultar".</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+fetch("{% url 'grafos:datos' %}")
+  .then(r => r.json())
+  .then(data => {
+    const sel = document.getElementById('c-zona');
+    data.nodos.filter(n => n.group === 'zona').sort((a, b) => a.label.localeCompare(b.label))
+      .forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id; opt.textContent = c.label;
+        sel.appendChild(opt);
+      });
+  });
+
+function ejecutarConsulta() {
+  const params = new URLSearchParams({
+    zona: document.getElementById('c-zona').value,
+    tipo: document.getElementById('c-tipo').value,
+    variable: document.getElementById('c-variable').value,
+    operador: document.getElementById('c-operador').value,
+    umbral: document.getElementById('c-umbral').value,
+    fecha_inicio: document.getElementById('c-fecha-inicio').value,
+    fecha_fin: document.getElementById('c-fecha-fin').value,
+  });
+  const div = document.getElementById('resultado-consulta');
+  div.textContent = 'Consultando...';
+
+  fetch(`{% url 'grafos:consulta_hibrida' %}?${params}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { div.innerHTML = `<span style="color:var(--danger);">${data.error}</span>`; return; }
+      if (!data.resultados.length) {
+        div.textContent = `Ninguna comuna relacionada con ${data.zona_base} cumple esa condición en ese período.`;
+        return;
+      }
+      div.innerHTML = `
+        <div style="margin-bottom:10px;color:var(--gray-500);">
+          Comunas relacionadas con <strong>${data.zona_base}</strong> (${data.relacion}) que cumplen "${data.variable}" en el período:
+        </div>
+        <table class="table">
+          <thead><tr><th>Comuna</th><th>Días que cumplen</th><th>Ejemplo</th></tr></thead>
+          <tbody>
+            ${data.resultados.map(r => `
+              <tr><td>${r.comuna}</td><td>${r.n_coincidencias}</td><td>${r.ejemplo_fecha}: ${r.ejemplo_valor}</td></tr>`).join('')}
+          </tbody>
+        </table>`;
+    });
+}
+</script>
+{% endblock %}

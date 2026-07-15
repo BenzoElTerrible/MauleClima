@@ -161,9 +161,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Chart.js para la serie temporal -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
 <script>
 const map = L.map('map', {zoomControl:true}).setView([-35.5, -71.5], 8);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -174,7 +171,6 @@ let geojsonLayer = null;
 let todosLosFeatures = [];
 let minVal = 0, maxVal = 1;
 
-// Escalas de color: una para variables de clima, otra para vegetación
 const RAMPAS = {
   clima:      [[33,102,172], [116,173,209], [254,224,144], [244,109,67], [215,48,39]],
   vegetacion: [[140,81,10],  [216,179,101], [246,232,195], [155,206,120], [26,152,80]],
@@ -221,20 +217,17 @@ function cargarMapa() {
     .then(data => {
       todosLosFeatures = data.features;
 
-      // Calcular min/max para escala de color
       const vals = data.features
         .map(f => f.properties.valor)
         .filter(v => v !== null && v !== undefined);
       minVal = vals.length ? Math.min(...vals) : 0;
       maxVal = vals.length ? Math.max(...vals) : 1;
 
-      // Actualizar leyenda
       document.getElementById('leyenda-min').textContent = minVal.toFixed(2);
       document.getElementById('leyenda-max').textContent = maxVal.toFixed(2);
       document.getElementById('leyenda-label').textContent = label;
       document.getElementById('leyenda-gradiente').style.background = rampaCss(rampaActual(variable));
 
-      // Poblar selector de provincias
       const provSet = new Set(data.features.map(f => f.properties.provincia).filter(Boolean));
       const selProv = document.getElementById('sel-provincia');
       selProv.innerHTML = '<option value="">Todas</option>';
@@ -244,7 +237,6 @@ function cargarMapa() {
         selProv.appendChild(opt);
       });
 
-      // Dibujar GeoJSON
       if (geojsonLayer) map.removeLayer(geojsonLayer);
       geojsonLayer = L.geoJSON(data, {
         style: f => ({
@@ -277,7 +269,6 @@ function cargarMapa() {
 }
 
 function mostrarPanel(p, feature) {
-  // Mostrar panel
   document.getElementById('panel-vacio').style.display  = 'none';
   document.getElementById('panel-comuna').style.display = 'block';
   document.getElementById('comuna-nombre').textContent  =
@@ -288,11 +279,9 @@ function mostrarPanel(p, feature) {
   document.getElementById('comuna-valor').textContent = val;
   document.getElementById('comuna-fecha').textContent  = p.fecha || '—';
 
-  // Botón exportar
   document.getElementById('btn-exportar').href =
     `/api/exportar/${p.zona_id}/`;
 
-  // Serie temporal
   cargarSerie(p.zona_id, document.getElementById('sel-variable').value);
 }
 
@@ -326,7 +315,6 @@ function cargarSerie(zonaId, variable) {
     });
 }
 
-// Filtro por provincia (en cliente)
 document.getElementById('sel-provincia').addEventListener('change', function() {
   if (!geojsonLayer) return;
   const prov = this.value;
@@ -340,7 +328,6 @@ document.getElementById('sel-provincia').addEventListener('change', function() {
   });
 });
 
-// Cargar al inicio
 cargarMapa();
 </script>
 {% endblock %}

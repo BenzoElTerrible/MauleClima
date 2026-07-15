@@ -1,9 +1,311 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Grafos{% endblock %}
+{% block title %}Explorador de Grafos{% endblock %}
 {% block page_title %}Explorador de Grafos{% endblock %}
 {% block nav_grafos %}active{% endblock %}
 
+{% block extra_css %}
+<style>
+  #grafo-contenedor { height: 560px; background: var(--gray-50); border-radius: 8px; }
+  .grafo-leyenda {
+    display: flex; flex-wrap: wrap; gap: 20px;
+    padding: 12px 18px; font-size: 12px; color: var(--gray-500);
+  }
+  .grafo-leyenda-item { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .grafo-leyenda-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .grafo-leyenda-box { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .grafo-leyenda-linea { width: 22px; height: 0; border-top: 2px solid; display: inline-block; }
+  .ranking-lista div { padding: 2px 0; }
+  .diag-caption { font-size: 11px; color: var(--gray-400); margin-bottom: 6px; }
+</style>
+{% endblock %}
+
 {% block content %}
-<p>Sección de grafos — próximamente</p>
+<div class="page-header">
+  <div>
+    <h2 class="page-header-title">Explorador de Grafos</h2>
+    <p class="page-header-sub">Relaciones espaciales y climáticas entre comunas (Neo4j)</p>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px;padding:16px 20px;">
+  <div style="font-size:12px;color:var(--gray-400);margin-bottom:10px;">
+    Esto solo decide qué líneas se <strong>dibujan</strong> — no afecta el buscador de caminos, que tiene su propio selector más abajo.
+  </div>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center;">
+    <div>
+      <label class="form-label">Mostrar relaciones</label>
+      <div style="display:flex;gap:14px;font-size:13px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:5px;"><input type="checkbox" id="chk-vecina" checked> Vecina</label>
+        <label style="display:flex;align-items:center;gap:5px;"><input type="checkbox" id="chk-jerarquia" checked> Jerarquía</label>
+        <label style="display:flex;align-items:center;gap:5px;"><input type="checkbox" id="chk-clima" checked> Clima similar</label>
+        <label style="display:flex;align-items:center;gap:5px;"><input type="checkbox" id="chk-vegetacion" checked> Vegetación similar</label>
+        <label style="display:flex;align-items:center;gap:5px;"><input type="checkbox" id="chk-riesgo" checked> Riesgo similar</label>
+      </div>
+    </div>
+    <div>
+      <label class="form-label">Filtrar por provincia</label>
+      <select id="sel-provincia-grafo" class="form-control" style="min-width:170px;">
+        <option value="">Todas</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="padding:0;overflow:hidden;">
+  <div id="grafo-contenedor"></div>
+  <div class="grafo-leyenda">
+    <span class="grafo-leyenda-item"><span class="grafo-leyenda-dot" style="background:#2d7a44;"></span> Comuna</span>
+    <span class="grafo-leyenda-item"><span class="grafo-leyenda-box" style="background:#7c3aed;"></span> Provincia</span>
+    <span class="grafo-leyenda-item"><span class="grafo-leyenda-linea" style="border-color:#7c3aed;border-top-style:dashed;"></span> Pertenece a</span>
+    <span class="grafo-leyenda-item"><span class="grafo-leyenda-linea" style="border-color:#94a3b8;"></span> Vecina</span>
+    <span class="grafo-leyenda-item"><span class="grafo-leyenda-linea" style="border-color:#f97316;"></span> Clima similar</span>
+    <span class="grafo-leyenda-item"><span class="grafo-leyenda-linea" style="border-color:#15803d;"></span> Vegetación similar</span>
+    <span class="grafo-leyenda-item"><span class="grafo-leyenda-linea" style="border-color:#dc2626;"></span> Riesgo similar</span>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px;padding:16px 20px;">
+  <div class="card-title" style="margin-bottom:4px;">Camino más corto entre dos comunas</div>
+  <div style="font-size:12px;color:var(--gray-400);margin-bottom:12px;">Independiente de los checkboxes de arriba.</div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
+    <div>
+      <label class="form-label">Desde</label>
+      <select id="sel-origen" class="form-control" style="min-width:170px;"></select>
+    </div>
+    <div>
+      <label class="form-label">Hasta</label>
+      <select id="sel-destino" class="form-control" style="min-width:170px;"></select>
+    </div>
+    <div>
+      <label class="form-label">Relación a usar</label>
+      <select id="sel-tipo-camino" class="form-control" style="min-width:170px;">
+        <option value="vecina">Vecina (distancia)</option>
+        <option value="clima">Clima similar</option>
+        <option value="vegetacion">Vegetación similar</option>
+        <option value="riesgo">Riesgo similar</option>
+      </select>
+    </div>
+    <button onclick="buscarCamino()" class="btn btn-primary">
+      <i data-lucide="route" style="width:15px;height:15px;"></i> Buscar
+    </button>
+  </div>
+  <div id="resultado-camino" style="margin-top:12px;font-size:13px;color:var(--gray-600);"></div>
+  <div id="comuna-mas-conectada" style="margin-top:8px;font-size:12px;color:var(--gray-400);"></div>
+</div>
+
+<div class="card" style="margin-top:16px;padding:16px 20px;">
+  <details>
+    <summary style="cursor:pointer;font-weight:600;font-size:14px;">Diagnóstico y rankings (consultas Cypher)</summary>
+    <div id="diagnostico-contenido" style="margin-top:14px;font-size:13px;">Cargando...</div>
+  </details>
+</div>
+
+<div class="card" style="margin-top:16px;padding:16px 20px;">
+  <details>
+    <summary style="cursor:pointer;font-weight:600;font-size:14px;">Comunidades detectadas (Louvain / GDS)</summary>
+    <div style="font-size:11px;color:var(--gray-400);margin:6px 0 12px;">
+      Agrupa comunas según qué tan parecido es su patrón climático — no según cercanía geográfica ni provincia administrativa.
+    </div>
+    <div id="comunidades-contenido" style="font-size:13px;">Cargando...</div>
+  </details>
+</div>
+
+<div class="card" style="margin-top:16px;padding:16px 20px;">
+  <details>
+    <summary style="cursor:pointer;font-weight:600;font-size:14px;">Métricas de red (GDS): grado, PageRank, betweenness, similitud, componentes</summary>
+    <div id="gds-metricas-contenido" style="margin-top:14px;font-size:13px;">Cargando...</div>
+  </details>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/vis-network.min.js' %}"></script>
+<script>
+const COLOR_ARISTA = { vecina: '#94a3b8', jerarquia: '#7c3aed', clima: '#f97316', vegetacion: '#15803d', riesgo: '#dc2626' };
+const UNIDAD_POR_TIPO = { vecina: 'km', clima: 'similitud', vegetacion: 'similitud', riesgo: 'similitud' };
+let datosCompletos = null, network = null, nodosDS = null;
+
+function construirGrafo() {
+  const mostrar = {
+    vecina: document.getElementById('chk-vecina').checked,
+    jerarquia: document.getElementById('chk-jerarquia').checked,
+    clima: document.getElementById('chk-clima').checked,
+    vegetacion: document.getElementById('chk-vegetacion').checked,
+    riesgo: document.getElementById('chk-riesgo').checked,
+  };
+  const provinciaFiltro = document.getElementById('sel-provincia-grafo').value;
+  let nodosFiltrados = datosCompletos.nodos;
+  if (provinciaFiltro) {
+    const idsEnProvincia = new Set(
+      datosCompletos.aristas.filter(a => a.tipo === 'jerarquia' && a.from === 'prov_' + provinciaFiltro).map(a => a.to)
+    );
+    idsEnProvincia.add('prov_' + provinciaFiltro);
+    nodosFiltrados = datosCompletos.nodos.filter(n => idsEnProvincia.has(n.id));
+  }
+  const idsVisibles = new Set(nodosFiltrados.map(n => n.id));
+  const aristasFiltradas = datosCompletos.aristas.filter(a => mostrar[a.tipo] && idsVisibles.has(a.from) && idsVisibles.has(a.to));
+
+  nodosDS = new vis.DataSet(nodosFiltrados.map(n => ({
+    ...n, color: n.group === 'provincia' ? '#7c3aed' : '#2d7a44',
+    shape: n.group === 'provincia' ? 'box' : 'dot', size: n.group === 'provincia' ? undefined : 12,
+  })));
+  const aristasDS = new vis.DataSet(aristasFiltradas.map((a, i) => ({ id: i, ...a, color: { color: COLOR_ARISTA[a.tipo] || '#cbd5e1' } })));
+
+  if (network) network.destroy();
+  network = new vis.Network(document.getElementById('grafo-contenedor'), { nodes: nodosDS, edges: aristasDS },
+    { physics: { stabilization: true }, edges: { smooth: false } });
+
+  network.on('selectNode', params => {
+    const vecinos = new Set(network.getConnectedNodes(params.nodes[0]));
+    vecinos.add(params.nodes[0]);
+    nodosDS.forEach(n => nodosDS.update({ id: n.id, opacity: vecinos.has(n.id) ? 1 : 0.15 }));
+  });
+  network.on('deselectNode', () => nodosDS.forEach(n => nodosDS.update({ id: n.id, opacity: 1 })));
+}
+
+function poblarSelectsComuna(nodos) {
+  const comunas = nodos.filter(n => n.group === 'zona').sort((a, b) => a.label.localeCompare(b.label));
+  ['sel-origen', 'sel-destino'].forEach(id => {
+    const sel = document.getElementById(id);
+    comunas.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id; opt.textContent = c.label;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+function buscarCamino() {
+  const origen = document.getElementById('sel-origen').value;
+  const destino = document.getElementById('sel-destino').value;
+  const tipo = document.getElementById('sel-tipo-camino').value;
+  const div = document.getElementById('resultado-camino');
+  div.textContent = 'Buscando...';
+  fetch(`{% url 'grafos:camino' %}?origen=${origen}&destino=${destino}&tipo=${tipo}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.encontrado) { div.textContent = 'No hay camino conectando esas dos comunas por esa relación.'; return; }
+      const unidad = UNIDAD_POR_TIPO[tipo] || '';
+      let texto = data.comunas[0];
+      for (let i = 0; i < data.valores.length; i++) {
+        const v = data.valores[i] ?? '—';
+        texto += ` —(${v} ${unidad})→ ${data.comunas[i + 1]}`;
+      }
+      div.textContent = `${texto}   ·   ${data.saltos} salto(s)`;
+      if (nodosDS) {
+        nodosDS.forEach(n => nodosDS.update({ id: n.id, opacity: 0.15 }));
+        data.comunas.forEach(nombreComuna => {
+          const nodo = datosCompletos.nodos.find(n => n.label === nombreComuna);
+          if (nodo) nodosDS.update({ id: nodo.id, opacity: 1 });
+        });
+      }
+    });
+}
+
+function cargarDiagnostico() {
+  Promise.all([
+    fetch("{% url 'grafos:diagnostico' %}").then(r => r.json()),
+    fetch("{% url 'grafos:rankings' %}").then(r => r.json()),
+  ]).then(([diag, rank]) => {
+    const seccion = (titulo, caption, items, formato) => `
+      <div style="margin-bottom:16px;">
+        <div style="font-weight:600;margin-bottom:2px;">${titulo}</div>
+        <div class="diag-caption">${caption}</div>
+        <div class="ranking-lista">${items.length ? items.map(formato).join('') : '<div style="color:var(--gray-400);">— ninguna —</div>'}</div>
+      </div>`;
+
+    let html = `<div style="margin-bottom:14px;padding:8px 12px;border-radius:6px;background:${diag.red_totalmente_conectada ? 'var(--green-50)' : '#fef2f2'};">
+      Red de vecindad: ${diag.red_totalmente_conectada ? 'totalmente conectada' : `parcialmente aislada (${diag.alcanzables}/${diag.total_comunas} alcanzables desde un punto)`}
+      <div class="diag-caption" style="margin-top:2px;">¿Se puede llegar de cualquier comuna a cualquier otra siguiendo solo relaciones de vecindad?</div>
+    </div>`;
+    html += seccion('Nodos aislados', 'Comunas sin ninguna relación en el grafo — revisar sus coordenadas o datos.', diag.nodos_aislados, n => `<div>• ${n}</div>`);
+    html += seccion('Sin clima similar calculable', 'Les falta historial de temperatura suficiente (mínimo 10 fechas en común con otra comuna).', diag.sin_clima_similar, n => `<div>• ${n}</div>`);
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">`;
+    html += seccion('Top precipitación promedio', 'Promedio diario en el período importado, ya en milímetros.', rank.precipitacion, r => `<div>${r.nombre}: ${r.valor} mm</div>`);
+    html += seccion('Top amplitud térmica', 'Diferencia entre temperatura máxima y mínima del día, promediada — más alto = más contraste día/noche.', rank.amplitud_termica, r => `<div>${r.nombre}: ${r.valor} °C</div>`);
+    html += seccion('Top NDVI promedio', 'Índice de vegetación (0 a 1) — más cerca de 1 = vegetación más densa.', rank.ndvi, r => `<div>${r.nombre}: ${r.valor}</div>`);
+    html += seccion('Más mediciones sin validar', 'Registros marcados manualmente como sospechosos (editables en el CRUD de Mediciones).', rank.mas_no_validadas, r => `<div>${r.nombre}: ${r.valor}</div>`);
+    html += `</div>`;
+    html += seccion('Grado completo', 'Cuántas vecinas tiene cada comuna. No es fijo: cada una elige sus 4 más cercanas, pero también puede ser elegida por otras.', rank.grado_completo, r => `<div>${r.nombre}: ${r.valor}</div>`);
+
+    document.getElementById('diagnostico-contenido').innerHTML = html;
+  });
+}
+
+function cargarComunidades() {
+  const colores = ['#2d7a44', '#7c3aed', '#f97316', '#0891b2', '#dc2626', '#65a30d', '#9333ea'];
+  fetch("{% url 'grafos:comunidades' %}")
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        document.getElementById('comunidades-contenido').innerHTML =
+          `<div style="color:var(--danger);">Error: ${data.error}</div>`;
+        return;
+      }
+      const html = data.grupos.map((g, i) => `
+        <div style="margin-bottom:10px;padding:8px 12px;border-left:3px solid ${colores[i % colores.length]};background:var(--gray-50);border-radius:4px;">
+          <strong>Comunidad ${g.id}</strong> (${g.comunas.length} comunas): ${g.comunas.join(', ')}
+        </div>
+      `).join('');
+      document.getElementById('comunidades-contenido').innerHTML = html || '<div style="color:var(--gray-400);">Sin datos suficientes.</div>';
+    });
+}
+
+function cargarGdsMetricas() {
+  fetch("{% url 'grafos:gds_metricas' %}")
+    .then(r => r.json())
+    .then(data => {
+      const cont = document.getElementById('gds-metricas-contenido');
+      if (data.error) {
+        cont.innerHTML = `<div style="color:var(--danger);">Error: ${data.error}</div>`;
+        return;
+      }
+      const lista = (titulo, caption, items, formato) => `
+        <div style="margin-bottom:16px;">
+          <div style="font-weight:600;margin-bottom:2px;">${titulo}</div>
+          <div class="diag-caption">${caption}</div>
+          <div class="ranking-lista">${items.length ? items.map(formato).join('') : '<div style="color:var(--gray-400);">— sin datos —</div>'}</div>
+        </div>`;
+
+      let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">';
+      html += lista('Grado combinado (vecindad + clima)', 'Cuántas conexiones tiene cada comuna sumando ambas relaciones a la vez.', data.grado_combinado, r => `<div>${r.comuna}: ${r.valor}</div>`);
+      html += lista('PageRank climático', 'No solo cuántas conexiones tiene, sino si está conectada a otras comunas también importantes.', data.pagerank, r => `<div>${r.comuna}: ${r.valor}</div>`);
+      html += lista('Betweenness (comunas puente)', 'Qué tan seguido aparece en el camino más corto entre otras dos comunas.', data.betweenness, r => `<div>${r.comuna}: ${r.valor}</div>`);
+      html += lista('Comunas con rol similar', 'Pares que comparten patrón de vecindad parecido, aunque estén lejos entre sí.', data.similares_estructural, r => `<div>${r.comuna1} ↔ ${r.comuna2}: ${r.valor}</div>`);
+      html += '</div>';
+      html += lista('Componentes conectados', 'Si toda la red de vecindad forma un solo grupo, o hay comunas separadas en grupos aparte.', data.componentes, r => `<div>Grupo ${r.id}: ${r.n_comunas} comuna(s)</div>`);
+
+      cont.innerHTML = html;
+    });
+}
+
+fetch("{% url 'grafos:datos' %}")
+  .then(r => r.json())
+  .then(data => {
+    datosCompletos = data;
+    const selProv = document.getElementById('sel-provincia-grafo');
+    data.nodos.filter(n => n.group === 'provincia').forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id.replace('prov_', ''); opt.textContent = p.label;
+      selProv.appendChild(opt);
+    });
+    poblarSelectsComuna(data.nodos);
+    construirGrafo();
+  });
+
+fetch("{% url 'grafos:mas_conectada' %}").then(r => r.json()).then(data => {
+  if (data.nombre) document.getElementById('comuna-mas-conectada').textContent =
+    `Comuna más conectada por vecindad: ${data.nombre} (${data.grado} vecinas)`;
+});
+
+cargarDiagnostico();
+cargarComunidades();
+cargarGdsMetricas();
+
+['chk-vecina', 'chk-jerarquia', 'chk-clima', 'chk-vegetacion', 'chk-riesgo', 'sel-provincia-grafo'].forEach(id => {
+  document.getElementById(id).addEventListener('change', construirGrafo);
+});
+</script>
 {% endblock %}
